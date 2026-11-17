@@ -1,0 +1,16 @@
+# broadway-ingest-pipeline
+
+> Broadway ingestion pipeline over a lease-based queue with idempotent Postgres-style batch upserts, exponential retry backoff and a dead-letter store that loses nothing on crashes Hex package `trysac_broadway_ingest_pipeline`, module `Trysac.BroadwayIngestPipeline`, MIT licensed, Elixir
+> >= 1.20 on Erlang/OTP 29, standard library only.
+
+## Docs
+
+- [README](README.md): problem, install, usage example
+- [AGENTS](AGENTS.md): commands, folder map, conventions, limits
+- [Architecture](docs/ARCHITECTURE.md): shape of the library and its public API
+- [Testing](docs/TESTING.md): how to run and extend the tests
+
+## Optional
+
+- [Stack](docs/STACK.md): tools used and discarded
+- [Changelog](CHANGELOG.md): release history

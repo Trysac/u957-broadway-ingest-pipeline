@@ -1,0 +1,21 @@
+# Mix: dependencies, build output and Dialyzer PLTs, never committed
+/deps/
+/_build/
+
+# Tool caches and reports
+/cover/
+/doc/
+*.ez
+*.beam
+erl_crash.dump
+/tmp/
+
+# IDE
+.idea/
+.vscode/
+.elixir_ls/
+
+# Local environment
+.env
+.env.*
+!.env.example

@@ -1,0 +1,11 @@
+# gitleaks configuration: default rules plus local-only paths that are never committed.
+title = "broadway-ingest-pipeline gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Mix dependencies, build output and local tool output (ignored by git)"
+paths = [
+  '''(^|/)(deps|_build|cover|doc|\.elixir_ls)/''',
+]

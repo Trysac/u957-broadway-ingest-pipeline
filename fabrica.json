@@ -1,0 +1,1 @@
+{"lang": "elixir", "package": "trysac_broadway_ingest_pipeline", "commands": {"install": [["mix", "deps.get", "--check-locked"]], "check": [["elixir", "scripts/check.exs"]]}}
