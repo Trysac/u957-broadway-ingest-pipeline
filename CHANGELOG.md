@@ -9,4 +9,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added Broadway ingestion pipeline (`LeaseQueue`, `QueueProducer`, `Pipeline`, `Sink`, `MemorySink`, `Sql`, and `Error`) with lease expiration, exponential backoff retries, dead-letter handling, and parameterized Postgres batch upsert builder.
 - Initial project structure from the factory utility template.

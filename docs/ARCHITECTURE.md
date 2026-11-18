@@ -1,34 +1,10 @@
 # Architecture
 
-## Purpose
+## Overview
 
-The Hex package `trysac_broadway_ingest_pipeline` is a small, dependency-free Elixir library: Broadway ingestion pipeline over a lease-based queue with idempotent Postgres-style batch upserts, exponential retry backoff and a dead-letter store that loses nothing on crashes
+`Trysac.BroadwayIngestPipeline` coordinates four crash-safety guarantees around `Broadway`:
 
-## Shape
-
-```text
-caller code --> Trysac.BroadwayIngestPipeline (lib/trysac/broadway_ingest_pipeline.ex)
-                    |
-                    +-- Trysac.BroadwayIngestPipeline.* (lib/trysac/broadway_ingest_pipeline/)
-                          +-- modules of pure functions; no processes, no I/O, no global state
-                          +-- @moduledoc false / @doc false helpers (private, optional)
-```
-
-- **Public API**: every module of `lib/` with a `@moduledoc` and its public functions and macros.
-  Modules marked `@moduledoc false` and functions marked `@doc false` are private and may change
-  without a major version.
-- **Errors**: invalid input raises an exception of the library (such as `BlankInputError`,
-  defined with `defexception`) documented in the function's `@doc`, or the function returns
-  `{:ok, value} | {:error, reason}` when failure is an expected outcome. The library never prints,
-  halts the VM, starts processes or changes application environment.
-- **Side effects**: none. If a feature needs I/O, accept data or a small behaviour instead of
-  opening files, and record the choice in an ADR.
-
-## Quality contract
-
-`scripts/check.exs` is the single definition of the gates; `fabrica.json` tells the factory and CI
-how to run it. See [TESTING.md](TESTING.md).
-
-## Decisions
-
-Architecture decisions are recorded in [decisions/](decisions/) as numbered ADRs.
+1. **Lease-based visibility (`LeaseQueue`)**: Messages transition from `ready` to `leased` with an expiration deadline (`lease_ms`, default 30,000 ms). If a consumer crashes before acknowledging, `LeaseQueue.expire/1` returns expired leases to `ready` with `attempt + 1`.
+2. **Acknowledge after commit (`QueueProducer` + `Pipeline`)**: JSON decoding and envelope validation occur in `handle_message/3`. Batch writes happen in `handle_batch/4`. Broadway invokes `QueueProducer.ack/3` only after `handle_batch/4` completes.
+3. **Bounded exponential backoff and dead-lettering**: Failed sink writes nack messages with delay `backoff_base_ms * 2^(attempt - 1)` capped at `backoff_max_ms`. Messages failing on `max_attempts` move to the dead-letter store with `:sink_failed`. Malformed JSON envelopes fail immediately in `handle_message/3` and move to the dead-letter store with `:invalid_message` without blocking valid messages in the same batch.
+4. **Idempotent sink writes (`MemorySink` and `Sql.upsert/3`)**: At-least-once delivery from lease expiration or retry is collapsed into exactly-once stored rows by enforcing primary-key conflict ignore (`ON CONFLICT ("id") DO NOTHING`).

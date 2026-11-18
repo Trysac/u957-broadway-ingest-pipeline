@@ -1,47 +1,30 @@
-# broadway-ingest-pipeline
+# Trysac.BroadwayIngestPipeline
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/Trysac/u957-broadway-ingest-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/Trysac/u957-broadway-ingest-pipeline/actions/workflows/ci.yml)
-
-Broadway ingestion pipeline over a lease-based queue with idempotent Postgres-style batch upserts, exponential retry backoff and a dead-letter store that loses nothing on crashes
-
-## Problem
-
-Describe in two or three sentences the concrete problem this utility solves, who hits it, and what
-they do today without it. Replace this paragraph when the first real feature lands.
-
-## Install
-
-```elixir
-# mix.exs
-def deps do
-  [{:trysac_broadway_ingest_pipeline, "~> 0.1"}]
-end
-```
-
-Until it is published on Hex, point the dependency at a release tag:
-`{:trysac_broadway_ingest_pipeline, git: "https://github.com/Trysac/u957-broadway-ingest-pipeline", tag: "v0.1.0"}`. Requires Elixir 1.20 or newer on
-Erlang/OTP 29. No dependencies outside the Elixir standard library.
+Broadway ingestion pipeline over a lease-based queue with idempotent Postgres-style batch upserts, exponential retry backoff and a dead-letter store that loses nothing on crashes.
 
 ## Usage
 
 ```elixir
-# normalize trims surrounding whitespace and lower-cases the text.
-Trysac.BroadwayIngestPipeline.Text.normalize("  Hello World ")
-#=> "hello world"
-
-# Blank input is rejected explicitly instead of returning an empty string.
-Trysac.BroadwayIngestPipeline.Text.normalize("   ")
-#=> ** (Trysac.BroadwayIngestPipeline.BlankInputError) input is blank
+{:ok, queue} = Trysac.BroadwayIngestPipeline.LeaseQueue.start_link()
+{:ok, sink} = Trysac.BroadwayIngestPipeline.MemorySink.start_link()
+body = JSON.encode!(%{"id" => "evt-1", "ts" => "2026-01-01T00:00:00Z", "payload" => %{"ok" => true}})
+{:ok, _ids} = Trysac.BroadwayIngestPipeline.LeaseQueue.enqueue(queue, [body])
+{:ok, pipeline} = Trysac.BroadwayIngestPipeline.Pipeline.start_link(queue: queue, sink: sink, batch_size: 1)
+{stmt, params} = hd(Trysac.BroadwayIngestPipeline.Sql.upsert("events", ["id", "ts", "payload"], [%{id: "evt-1", ts: "2026-01-01T00:00:00Z", payload: "{}"}]))
+Supervisor.stop(pipeline)
 ```
 
-## Documentation
+## API Summary
 
-- [Architecture](docs/ARCHITECTURE.md) and [decisions](docs/decisions/)
-- [Testing](docs/TESTING.md) and [security](docs/SECURITY.md)
-- [Project record](docs/PROJECT.md) and [stack](docs/STACK.md)
-- [Changelog](CHANGELOG.md) and [contributing guide](CONTRIBUTING.md)
+- `LeaseQueue`: Manages visibility leases. Features: `enqueue/2`, `lease/2`, `ack/2`, `nack/3`, `dead_letter/3`, `expire/1`, `stats/0`.
+- `Pipeline`: Configurable Broadway topology. Options: `name`, `queue`, `sink`, `batch_size`, `batch_timeout`, `processors`, `batchers`, `max_attempts`, `backoff_base_ms`, `backoff_max_ms`, `on_event`.
+- `Sql`: Builder for `INSERT ... ON CONFLICT DO NOTHING` statements with automated parameter batching.
+- `Error`: Typed exception for `:invalid_option`, `:invalid_identifier`, `:message_too_large`, `:queue_full`, `:unknown_lease`.
 
-## License
+## Why not existing Broadway producers?
 
-[MIT](LICENSE) (c) 2026 Miguel Gomez
+Standard Broadway producers acknowledge messages immediately upon consumption, causing data loss on consumer crashes. This library implements a lease-based queue that only acknowledges after the sink commits, providing guaranteed at-least-once delivery into the sink and exactly-once storage via primary-key conflict ignores.
+
+## Security
+
+See [docs/SECURITY.md](docs/SECURITY.md) for the threat model and limits.
