@@ -60,6 +60,7 @@ defmodule Trysac.BroadwayIngestPipeline.MixProject do
 
   defp deps do
     [
+      {:broadway, ">= 1.3.0 and < 2.0.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},

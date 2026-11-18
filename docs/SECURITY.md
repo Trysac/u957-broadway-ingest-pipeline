@@ -1,29 +1,14 @@
-# Security notes
+# Security
 
-## Threat model
+## Threat Model
 
-The Hex package `trysac_broadway_ingest_pipeline` is a pure library without I/O. The main risks are:
+### Defended
 
-- **Supply chain**: a compromised package or CI action. Mitigation: standard library only, every
-  package pinned by the committed `mix.lock` (with its checksums, fetched with
-  `mix deps.get --check-locked`), `mix hex.audit` (retired releases), `mix deps.audit` (the
-  Elixir security advisories) and OSV-Scanner over `mix.lock` in the gates, Dependabot weekly
-  updates, actions pinned by commit SHA, minimal workflow permissions.
-- **Leaked secrets**: tokens committed by mistake. Mitigation: `gitleaks` runs in the local gates
-  and in CI; `.env` files and Hex API keys are never committed.
-- **Insecure code**: code evaluation (`Code.eval_string`), shell command lines (`:os.cmd`,
-  `System.shell`), unsafe deserialization (`:erlang.binary_to_term` without `:safe`), atoms
-  created from input (`String.to_atom`), functions chosen by input (`apply/3`), disabled TLS
-  verification (`:verify_none`). Mitigation: Credo's Warning checks in the lint gate, Dialyzer,
-  and the factory's Semgrep rules (`.semgrep/factory-rules.yml`, `nosemgrep` ignored); fix the
-  code instead of silencing it.
-- **Untrusted input**: callers may pass hostile strings. Mitigation: validate input with guards
-  and pattern matching and raise explicit, documented errors; never turn input into atoms or
-  code.
+- **Memory Exhaustion**: `LeaseQueue` enforces `max_body_bytes` (default 1,048,576 bytes) and `max_messages` (default 100,000), raising `:message_too_large` or `:queue_full` errors.
+- **SQL Injection**: `Sql.upsert/3` validates identifiers against `~r/\A[a-z_][a-z0-9_]{0,62}\z/`, uses double-quoting, and positional parameters capped at 65,535 parameters.
+- **Sensitive Data Leakage**: `Error` exceptions truncate input snippets to 200 characters. `on_event` telemetry callbacks contain only `:type`, `:count`, and `:attempt`, explicitly excluding message payloads.
 
-## Publishing
+### Not Defended
 
-Releases are git tags; publishing on Hex needs an account, whose API key is never stored in the
-repository.
-
-To report a vulnerability, see [SECURITY.md](../SECURITY.md).
+- Resource exhaustion via high-frequency API calls from untrusted sources.
+- Denial of Service through complex JSON payload structures (standard library decoder limits apply).

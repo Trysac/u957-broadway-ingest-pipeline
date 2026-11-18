@@ -1,15 +1,20 @@
 defmodule Trysac.BroadwayIngestPipeline do
   @moduledoc """
-  Broadway ingestion pipeline over a lease-based queue with idempotent Postgres-style batch upserts, exponential retry backoff and a dead-letter store that loses nothing on crashes
-
-  The entry point of the library: its public modules live under `Trysac.BroadwayIngestPipeline`.
+  Broadway ingestion pipeline over a lease-based queue with idempotent
+  Postgres-style batch upserts, exponential retry backoff and a dead-letter store.
   """
+
+  @version Mix.Project.config()[:version]
 
   @doc """
-  The library's version, read from the application specification (the release manager sets it in `mix.exs`).
+  Returns the library version.
+
+  ## Examples
+
+      iex> Trysac.BroadwayIngestPipeline.version()
+      "0.1.0"
+
   """
   @spec version() :: String.t()
-  def version do
-    :trysac_broadway_ingest_pipeline |> Application.spec(:vsn) |> to_string()
-  end
+  def version, do: @version
 end
